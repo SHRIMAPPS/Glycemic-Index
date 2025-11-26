@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glycemic Load & Index Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e0f2f7; /* Light blue background */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 700px;
+            margin: 20px 0;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #00796b; /* Teal color for main heading */
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        h3 {
+            color: #00796b;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px;
+            font-size: 1.4em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #004d40;
+        }
+
+        select,
+        input[type="number"] {
+            width: calc(100% - 22px); /* Account for padding and border */
+            padding: 12px 10px;
+            margin-bottom: 15px;
+            border: 1px solid #b2dfdb; /* Light teal border */
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            color: #333;
+            background-color: #f0fdfc;
+        }
+
+        select:focus,
+        input[type="number"]:focus {
+            border-color: #00796b;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.2);
+        }
+
+        button {
+            background-color: #00796b; /* Teal */
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #004d40; /* Darker teal */
+            transform: translateY(-2px);
+        }
+
+        button#clearBtn {
+            background-color: #d32f2f; /* Red for clear */
+        }
+
+        button#clearBtn:hover {
+            background-color: #b71c1c;
+        }
+
+        #mealList,
+        #results {
+            background-color: #f9fdfd; /* Very light teal/white */
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border: 1px solid #e0f2f7;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        #mealItems {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #mealItems li {
+            padding: 10px 0;
+            border-bottom: 1px dashed #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #mealItems li:last-child {
+            border-bottom: none;
+        }
+
+        #glResult,
+        #giResult {
+            font-weight: bold;
+            color: #004d40; /* Dark teal */
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        #errorMessages {
+            color: #d32f2f; /* Red */
+            font-weight: bold;
+            margin-top: 15px;
+            border: 1px solid #ef9a9a;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            button {
+                display: block;
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Glycemic Load & Index Calculator</h1>
+        <div class="form-group">
+            <label for="foodItem">Select Food Item:</label>
+            <!-- The dropdown options will be populated by Flask -->
+            <select id="foodItem" name="foodItem">
+                {% for item in food_items %}
+                    <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="quantity">Quantity (grams):</label>
+            <input type="number" id="quantity" name="quantity" value="100" min="0">
+        </div>
+
+        <div>
+            <button id="addItemBtn">Add to Meal</button>
+            <button id="calculateBtn">Calculate GL/GI</button>
+            <button id="clearBtn">Clear Meal</button>
+        </div>
+
+        <div id="mealList">
+            <h3>Current Meal Items:</h3>
+            <ul id="mealItems">
+                <!-- Meal items will be listed here by JavaScript -->
+            </ul>
+        </div>
+
+        <div id="results">
+            <h3>Calculation Results:</h3>
+            <p id="glResult"></p>
+            <p id="giResult"></p>
+            <p id="errorMessages" class="error"></p>
+        </div>
+    </div>
+
+    <script>
+        let mealItems = []; // Array to store items in the current meal
+
+        const foodItemDropdown = document.getElementById('foodItem');
+        const quantityInput = document.getElementById('quantity');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const mealItemsList = document.getElementById('mealItems');
+        const glResult = document.getElementById('glResult');
+        const giResult = document.getElementById('giResult');
+        const errorMessages = document.getElementById('errorMessages');
+
+        // Function to update the displayed meal list
+        function updateMealList() {
+            mealItemsList.innerHTML = ''; // Clear current list
+            if (mealItems.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Meal list is empty.';
+                mealItemsList.appendChild(li);
+            } else {
+                mealItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = `${item['Food Item']}: ${item['Quantity Used in gram']} grams`;
+                    mealItemsList.appendChild(li);
+                });
+            }
+        }
+
+        // Add item button click handler
+        addItemBtn.addEventListener('click', () => {
+            const selectedItem = foodItemDropdown.value;
+            const quantity = parseFloat(quantityInput.value);
+
+            if (selectedItem && quantity > 0) {
+                // Check if item already exists, if so, update quantity
+                const existingItemIndex = mealItems.findIndex(item => item['Food Item'] === selectedItem);
+                if (existingItemIndex > -1) {
+                    mealItems[existingItemIndex]['Quantity Used in gram'] += quantity;
+                     console.log(`Updated quantity for ${selectedItem}`);
+                } else {
+                    mealItems.push({'Food Item': selectedItem, 'Quantity Used in gram': quantity});
+                    console.log(`Added ${selectedItem}`);
+                }
+
+                quantityInput.value = 100; // Reset quantity input
+                updateMealList();
+                 // Clear previous results/errors when adding a new item
+                glResult.textContent = '';
+                giResult.textContent = '';
+                errorMessages.textContent = '';
+
+            } else if (quantity <= 0) {
+                errorMessages.textContent = "Quantity must be greater than 0.";
+            } else {
+                 errorMessages.textContent = "Please select a food item.";
+            }
+             console.log("Current mealItems:", mealItems);
+        });
+
+        // Calculate button click handler
+        calculateBtn.addEventListener('click', async () => {
+            if (mealItems.length === 0) {
+                errorMessages.textContent = "Meal list is empty. Add items before calculating.";
+                glResult.textContent = '';
+                giResult.textContent = '';
+                return;
+            }
+
+             // Clear previous results/errors
+            glResult.textContent = '';
+            giResult.textContent = '';
+            errorMessages.textContent = '';
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ meal_items: mealItems })
+                });
+
+                const data = await response.json();
+                 console.log("Calculation response:", data);
+
+
+                if (response.ok) { // Check if the HTTP status is OK (2xx)
+                    if (data.glycemic_load) {
+                        glResult.textContent = `Estimated Total Meal Glycemic Load: ${data.glycemic_load}`;
+                    } else if (data.glycemic_load_error) {
+                        glResult.textContent = `GL Error: ${data.glycemic_load_error}`;
+                        glResult.style.color = '#d32f2f'; // Highlight error
+                    } else {
+                         glResult.textContent = 'GL calculation returned no value.';
+                    }
+
+
+                    if (data.glycemic_index && data.gi_category) {
+                        giResult.textContent = `Estimated Total Meal Glycemic Index: ${data.glycemic_index} (${data.gi_category} GI)`;
+                    } else if (data.glycemic_index_error) {
+                         giResult.textContent = `GI Error: ${data.glycemic_index_error}`;
+                         giResult.style.color = '#d32f2f'; // Highlight error
+                    } else {
+                         giResult.textContent = 'GI calculation returned no value.';
+                    }
+
+
+                    if (data.message) { // Handle messages like "Meal list is empty" from backend
+                        errorMessages.textContent = data.message;
+                    }
+
+
+                } else { // Handle HTTP errors (e.g., 400, 500)
+                     errorMessages.textContent = data.error || `Server error: ${response.status}`;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessages.textContent = `An error occurred while communicating with the server: ${error.message}`;
+            }
+        });
+
+        // Clear meal button click handler
+        clearBtn.addEventListener('click', () => {
+            mealItems = []; // Reset the array
+            updateMealList(); // Update the display
+             // Clear results/errors
+            glResult.textContent = '';
+            giResult.textContent = '';
+            errorMessages.textContent = '';
+            console.log("Meal list cleared.");
+        });
+
+        // Initial display when the page loads
+        updateMealList();
+
+    </script>
+</body>
+</html>
